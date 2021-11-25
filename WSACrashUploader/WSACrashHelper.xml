@@ -1,0 +1,546 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>WSACrashHelper</name>
+    </assembly>
+    <members>
+        <member name="T:WSACrashHelper.CrashProcessing">
+            <summary>
+            Class for processing Android crash files.
+            </summary>
+        </member>
+        <member name="M:WSACrashHelper.CrashProcessing.ProcessAllCrashesInDirectory(System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>
+            Processes and optional <paramref name="submit"/> all crashes in <paramref name="directory"/>.
+            </summary>
+            <param name="directory">Directory to process for crashes.</param>
+            <param name="clientVersion">Version of the Windows Subsystem for Android Windows client.</param>
+            <param name="submit">Submit crash files to watson.</param>
+            <param name="deleteAfterProcessing">Delete file after successful processing.</param>
+        </member>
+        <member name="M:WSACrashHelper.CrashProcessing.ProcessCrashFile(System.String,System.String,System.Boolean)">
+            <summary>
+            Processes specificied <paramref name="crashFile"/>, parsing it optionally submitting it to Watson.
+            </summary>
+            <param name="crashFile">Tombstone or ANR file to process.</param>
+            <param name="clientVersion">Version of the Windows Subsystem for Android Windows client.</param>
+            <param name="submit">Submit report to watson.</param>
+            <returns>true if successfully processed crash file, otherwise false.</returns>
+        </member>
+        <member name="M:WSACrashHelper.CrashProcessing.GetAppVersion(System.String)">
+            <summary>
+            Lookup specified Android app in ARP, and if found, return its concatenated version information.
+            </summary>
+            <param name="appName">Android package name to lookup.</param>
+            <returns>If found, concatenated version (DisplayVersion!AndroidVersionCode), otherwise null.</returns>
+        </member>
+        <member name="M:WSACrashHelper.CrashProcessing.GetCRC32HashHexString(System.String)">
+            <summary>
+            Gets the CRC32 hash of the stack as a hexidecimal string.
+            </summary>
+            <param name="stack">The stack to hash.</param>
+            <returns>a hexidecimal string representing the CRC32 hash of the stack.</returns>
+        </member>
+        <member name="T:WSACrashHelper.CRC32">
+            <summary>
+            HashAlgorithm implementation for CRC-32.
+            </summary>
+            <remarks>refactored to be Stylecop compliant from: https://dlaa.me/blog/post/9318279.</remarks>
+        </member>
+        <member name="F:WSACrashHelper.CRC32.Crc32Table">
+            <summary>
+            Shared, pre-computed lookup table for efficiency.
+            </summary>
+        </member>
+        <member name="M:WSACrashHelper.CRC32.#cctor">
+            <summary>
+            Initializes static members of the <see cref="T:WSACrashHelper.CRC32"/> class.
+            </summary>
+        </member>
+        <member name="M:WSACrashHelper.CRC32.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:WSACrashHelper.CRC32"/> class.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.CRC32.Hash">
+            <summary>
+            Gets the hash as an array of bytes.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.CRC32.HashSize">
+            <summary>
+            Gets the size of hash in bits.
+            </summary>
+        </member>
+        <member name="M:WSACrashHelper.CRC32.Initialize">
+            <summary>
+            Initializes internal state.
+            </summary>
+        </member>
+        <member name="M:WSACrashHelper.CRC32.HashCore(System.Byte[],System.Int32,System.Int32)">
+            <summary>
+            Updates the hash code for the provided data.
+            </summary>
+            <param name="array">Data.</param>
+            <param name="ibStart">Start position.</param>
+            <param name="cbSize">Number of bytes.</param>
+        </member>
+        <member name="M:WSACrashHelper.CRC32.HashFinal">
+            <summary>
+            Finalizes the hash code and returns it.
+            </summary>
+            <returns>a <see cref="T:System.Byte"/>.</returns>
+        </member>
+        <member name="M:WSACrashHelper.CRC32.InitializeVariables">
+            <summary>
+            Initializes variables.
+            </summary>
+        </member>
+        <member name="T:WSACrashHelper.NativeMethods">
+            <summary>
+            Native interop helper to call Win32 Watson APIs.
+            </summary>
+        </member>
+        <member name="T:WSACrashHelper.NativeMethods.BucketParameterId">
+            <summary>
+            Copied from werapi.h (with adapted names).
+            </summary>
+        </member>
+        <member name="M:WSACrashHelper.NativeMethods.SubmitReport(System.String,System.String,WSACrashHelper.WatsonParameters)">
+            <summary>
+            Submits a Dr. Watson (aka Windows Error Reporting / WER) crash report and then terminates the process.
+            </summary>
+            <param name="eventType">The Watson-registered event type.</param>
+            <param name="attachment">File to attach to crash report.</param>
+            <param name="watsonParameters">Watson parameters to use for event bucketing.</param>
+            <exception cref="T:System.Runtime.InteropServices.COMException">
+            Some failure HRESULTs map to well-defined exceptions, while others do not map
+            to a defined exception. If the HRESULT maps to a defined exception, ThrowExceptionForHR
+            creates an instance of the exception and throws it. Otherwise, it creates an instance
+            of System.Runtime.InteropServices.COMException, initializes the error code field with
+            the HRESULT, and throws that exception. When this method is invoked, it attempts to
+            retrieve extra information regarding the error by using the unmanaged GetErrorInfo
+            function.
+            </exception>
+        </member>
+        <member name="M:WSACrashHelper.NativeMethods.SetBucketParameter(System.IntPtr,WSACrashHelper.NativeMethods.BucketParameterId,System.String)">
+            <exception cref="T:System.Runtime.InteropServices.COMException">
+            Some failure HRESULTs map to well-defined exceptions, while others do not map
+            to a defined exception. If the HRESULT maps to a defined exception, ThrowExceptionForHR
+            creates an instance of the exception and throws it. Otherwise, it creates an instance
+            of System.Runtime.InteropServices.COMException, initializes the error code field with
+            the HRESULT, and throws that exception. When this method is invoked, it attempts to
+            retrieve extra information regarding the error by using the unmanaged GetErrorInfo
+            function.
+            </exception>
+        </member>
+        <member name="T:WSACrashHelper.WatsonParameters">
+            <summary>
+            Represents the common Watson parameters to use for event bucketing.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WatsonParameters.BuildFingerprint">
+            <summary>
+            Gets or sets the BuildFingerprint of the VM.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WatsonParameters.ClientVersion">
+            <summary>
+            Gets or sets the version of the client that generated the tombstone.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WatsonParameters.BuildABI">
+            <summary>
+            Gets or sets the ABI of the VM.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WatsonParameters.ProcessABI">
+            <summary>
+            Gets or sets the ABI of the crashing process.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WatsonParameters.AppName">
+            <summary>
+            Gets or sets the name of the app.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WatsonParameters.AppVersion">
+            <summary>
+            Gets or sets the version of the app.
+            </summary>
+        </member>
+        <member name="T:WSACrashHelper.WSA_Tombstone">
+            <summary>
+            Represents the tombstone-specific Watson parameters to use for event bucketing.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WSA_Tombstone.Signal">
+            <summary>
+            Gets or sets the signal that generated the crash.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WSA_Tombstone.ModuleName">
+            <summary>
+            Gets or sets the name of the module that generated the crash.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WSA_Tombstone.ModuleOffset">
+            <summary>
+            Gets or sets the module offset of the crash.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WSA_Tombstone.StackHash">
+            <summary>
+            Gets or sets the hash of the crash stack.
+            </summary>
+        </member>
+        <member name="T:WSACrashHelper.WSA_ANR">
+            <summary>
+            Represents the ANR-specific Watson parameters to use for event bucketing.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WSA_ANR.FirstStackHash">
+            <summary>
+            Gets or sets the hash of the first crash stack in the file.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WSA_ANR.FirstStackLine">
+            <summary>
+            Gets or sets the first line of the first crash stack in the file.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WSA_ANR.P9">
+            <summary>
+            Gets or sets this property which is currently unused.
+            </summary>
+        </member>
+        <member name="P:WSACrashHelper.WSA_ANR.P10">
+            <summary>
+            Gets or sets this property which is currently unused.
+            </summary>
+        </member>
+        <member name="T:WSACrashHelper.WindowsErrorReporting">
+            <summary>
+            Class that wraps the Watson API for submitting Watson reports.
+            </summary>
+        </member>
+        <member name="M:WSACrashHelper.WindowsErrorReporting.SubmitReport(System.String,WSACrashHelper.WatsonParameters)">
+            <summary>
+            Submits watson tombstone reports.
+            </summary>
+            <param name="crashFilePath">Path to crash file to submit to Watson.</param>
+            <param name="watsonParameters"><see cref="T:WSACrashHelper.WatsonParameters"/> to submit to Watson.</param>
+        </member>
+        <member name="M:Windows.Win32.Foundation.HRESULT.ThrowOnFailure(System.IntPtr)">
+            <inheritdoc cref="M:System.Runtime.InteropServices.Marshal.ThrowExceptionForHR(System.Int32,System.IntPtr)" />
+            <param name="errorInfo">
+            A pointer to the IErrorInfo interface that provides more information about the
+            error. You can specify <see cref="F:System.IntPtr.Zero"/> to use the current IErrorInfo interface, or
+            <c>new IntPtr(-1)</c> to ignore the current IErrorInfo interface and construct the exception
+            just from the error code.
+            </param>
+            <returns><see langword="this"/> <see cref="T:Windows.Win32.Foundation.HRESULT"/>, if it does not reflect an error.</returns>
+            <seealso cref="M:System.Runtime.InteropServices.Marshal.ThrowExceptionForHR(System.Int32,System.IntPtr)"/>
+        </member>
+        <member name="T:Windows.Win32.Foundation.PCWSTR">
+            <summary>
+            A pointer to a constant character string.
+            </summary>
+        </member>
+        <member name="F:Windows.Win32.Foundation.PCWSTR.Value">
+            <summary>
+            A pointer to the first character in the string. The content should be considered readonly, as it was typed as constant in the SDK.
+            </summary>
+        </member>
+        <member name="P:Windows.Win32.Foundation.PCWSTR.Length">
+            <summary>
+            Gets the number of characters up to the first null character (exclusive).
+            </summary>
+        </member>
+        <member name="M:Windows.Win32.Foundation.PCWSTR.ToString">
+            <summary>
+            Returns a <see langword="string"/> with a copy of this character array.
+            </summary>
+            <returns>A <see langword="string"/>, or <see langword="null"/> if <see cref="F:Windows.Win32.Foundation.PCWSTR.Value"/> is <see langword="null"/>.</returns>
+        </member>
+        <member name="M:Windows.Win32.Foundation.PCWSTR.AsSpan">
+            <summary>
+            Returns a span of the characters in this string.
+            </summary>
+        </member>
+        <member name="T:Windows.Win32.PInvoke">
+            <content>
+            Contains extern methods from "Kernel32.dll".
+            </content>
+            <content>
+            Contains extern methods from "wer.dll".
+            </content>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.CloseHandle(Windows.Win32.Foundation.HANDLE)">
+            <summary>Closes an open object handle.</summary>
+            <param name="hObject">A valid handle to an open object.</param>
+            <returns>
+            <para>If the function succeeds, the return value is nonzero. If the function fails, the return value is zero. To get extended error information, call <a href="/windows/desktop/api/errhandlingapi/nf-errhandlingapi-getlasterror">GetLastError</a>. If the application is running under a debugger,  the function will throw an exception if it receives either a  handle value that is not valid  or a pseudo-handle value. This can happen if you close a handle twice, or if you  call <b>CloseHandle</b> on a handle returned by the <a href="/windows/desktop/api/fileapi/nf-fileapi-findfirstfilea">FindFirstFile</a> function instead of calling the <a href="/windows/desktop/api/fileapi/nf-fileapi-findclose">FindClose</a> function.</para>
+            </returns>
+            <remarks>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//handleapi/nf-handleapi-closehandle">Learn more about this API from docs.microsoft.com</see>.</para>
+            </remarks>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.CopyFileEx(System.String,System.String,Windows.Win32.Storage.FileSystem.LPPROGRESS_ROUTINE,System.Void*,System.Int32*,System.UInt32)">
+            <inheritdoc cref="M:Windows.Win32.PInvoke.CopyFileEx(Windows.Win32.Foundation.PCWSTR,Windows.Win32.Foundation.PCWSTR,Windows.Win32.Storage.FileSystem.LPPROGRESS_ROUTINE,System.Void*,System.Int32*,System.UInt32)"/>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.CopyFileEx(Windows.Win32.Foundation.PCWSTR,Windows.Win32.Foundation.PCWSTR,Windows.Win32.Storage.FileSystem.LPPROGRESS_ROUTINE,System.Void*,System.Int32*,System.UInt32)">
+            <summary>Copies an existing file to a new file, notifying the application of its progress through a callback function.</summary>
+            <param name="lpExistingFileName">
+            <para>The name of an existing file.</para>
+            <para>In the ANSI version of this function, the name is limited to <b>MAX_PATH</b> characters. To extend this limit to 32,767 wide characters, call the Unicode version of the function and prepend "\\?\" to the path. For more information, see <a href="https://docs.microsoft.com/windows/desktop/FileIO/naming-a-file">Naming a File</a>. <div class="alert"><b>Tip</b>  Starting in Windows 10, version 1607, for the unicode version of this function (<b>CopyFileExW</b>), you can opt-in to remove the <b>MAX_PATH</b> character limitation without prepending "\\?\". See the "Maximum Path Limitation" section of  <a href="https://docs.microsoft.com/windows/desktop/FileIO/naming-a-file">Naming Files, Paths, and Namespaces</a> for details. </div> <div> </div> If <i>lpExistingFileName</i> does not exist, the <b>CopyFileEx</b> function fails, and the <a href="https://docs.microsoft.com/windows/desktop/api/errhandlingapi/nf-errhandlingapi-getlasterror">GetLastError</a> function returns <b>ERROR_FILE_NOT_FOUND</b>.</para>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//winbase/nf-winbase-copyfileexw#parameters">Read more on docs.microsoft.com</see>.</para>
+            </param>
+            <param name="lpNewFileName">
+            <para>The name of the new file.</para>
+            <para>In the ANSI version of this function, the name is limited to <b>MAX_PATH</b> characters. To extend this limit to 32,767 wide characters, call the Unicode version of the function and prepend "\\?\" to the path. For more information, see <a href="https://docs.microsoft.com/windows/desktop/FileIO/naming-a-file">Naming a File</a>. <div class="alert"><b>Tip</b>  Starting inWindows 10, version 1607, for the unicode version of this function (<b>CopyFileExW</b>), you can opt-in to remove the <b>MAX_PATH</b> character limitation without prepending "\\?\". See the "Maximum Path Limitation" section of  <a href="https://docs.microsoft.com/windows/desktop/FileIO/naming-a-file">Naming Files, Paths, and Namespaces</a> for details. </div> <div> </div></para>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//winbase/nf-winbase-copyfileexw#parameters">Read more on docs.microsoft.com</see>.</para>
+            </param>
+            <param name="lpProgressRoutine">
+            <para>The address of a callback function of type <b>LPPROGRESS_ROUTINE</b> that is called each time another portion of the file has been copied. This parameter can be <b>NULL</b>. For more information on the progress callback function, see the <a href="https://docs.microsoft.com/windows/desktop/api/winbase/nc-winbase-lpprogress_routine">CopyProgressRoutine</a> function.</para>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//winbase/nf-winbase-copyfileexw#parameters">Read more on docs.microsoft.com</see>.</para>
+            </param>
+            <param name="lpData">
+            <para>The argument to be passed to the callback function. This parameter can be <b>NULL</b>.</para>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//winbase/nf-winbase-copyfileexw#parameters">Read more on docs.microsoft.com</see>.</para>
+            </param>
+            <param name="pbCancel">
+            <para>If this flag is set to <b>TRUE</b> during the copy operation, the operation is canceled. Otherwise, the copy operation will continue to completion.</para>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//winbase/nf-winbase-copyfileexw#parameters">Read more on docs.microsoft.com</see>.</para>
+            </param>
+            <param name="dwCopyFlags">
+            <para>Flags that specify how the file is to be copied. This parameter can be a combination of the following values. </para>
+            <para>This doc was truncated.</para>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//winbase/nf-winbase-copyfileexw#parameters">Read more on docs.microsoft.com</see>.</para>
+            </param>
+            <returns>
+            <para>If the function succeeds, the return value is nonzero. If the function fails, the return value is zero. To get extended error information call <a href="/windows/desktop/api/errhandlingapi/nf-errhandlingapi-getlasterror">GetLastError</a>. If <i>lpProgressRoutine</i> returns <b>PROGRESS_CANCEL</b> due to the user canceling the operation, <b>CopyFileEx</b> will return zero and <a href="/windows/desktop/api/errhandlingapi/nf-errhandlingapi-getlasterror">GetLastError</a> will return <b>ERROR_REQUEST_ABORTED</b>. In this case, the partially copied destination file is deleted. If <i>lpProgressRoutine</i> returns <b>PROGRESS_STOP</b> due to the user stopping the operation, <b>CopyFileEx</b> will return zero and <a href="/windows/desktop/api/errhandlingapi/nf-errhandlingapi-getlasterror">GetLastError</a> will return <b>ERROR_REQUEST_ABORTED</b>. In this case, the partially copied destination file is left intact.</para>
+            </returns>
+            <remarks>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//winbase/nf-winbase-copyfileexw">Learn more about this API from docs.microsoft.com</see>.</para>
+            </remarks>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.WerReportCreate(System.String,Windows.Win32.System.ErrorReporting.WER_REPORT_TYPE,System.Nullable{Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION},System.IntPtr@)">
+            <inheritdoc cref="M:Windows.Win32.PInvoke.WerReportCreate(Windows.Win32.Foundation.PCWSTR,Windows.Win32.System.ErrorReporting.WER_REPORT_TYPE,Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION*,System.IntPtr*)"/>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.WerReportCreate(Windows.Win32.Foundation.PCWSTR,Windows.Win32.System.ErrorReporting.WER_REPORT_TYPE,Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION*,System.IntPtr*)">
+            <summary>Creates a problem report that describes an application event.</summary>
+            <param name="pwzEventType">A pointer to a Unicode string that specifies the name of the event.</param>
+            <param name="repType"></param>
+            <param name="pReportInformation">A pointer to a <a href="https://docs.microsoft.com/windows/desktop/api/werapi/ns-werapi-wer_report_information">WER_REPORT_INFORMATION</a> structure that specifies information for the report.</param>
+            <param name="phReportHandle">A handle to the report. If the function fails, this handle is <b>NULL</b>.</param>
+            <returns>This function returns <b>S_OK</b> on success or an error code on failure.</returns>
+            <remarks>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//werapi/nf-werapi-werreportcreate">Learn more about this API from docs.microsoft.com</see>.</para>
+            </remarks>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.WerReportSetParameter(System.IntPtr,System.UInt32,System.String,System.String)">
+            <inheritdoc cref="M:Windows.Win32.PInvoke.WerReportSetParameter(System.IntPtr,System.UInt32,Windows.Win32.Foundation.PCWSTR,Windows.Win32.Foundation.PCWSTR)"/>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.WerReportSetParameter(System.IntPtr,System.UInt32,Windows.Win32.Foundation.PCWSTR,Windows.Win32.Foundation.PCWSTR)">
+            <summary>Sets the parameters that uniquely identify an event for the specified report.</summary>
+            <param name="hReportHandle">A handle to the report. This handle is returned by the <a href="https://docs.microsoft.com/windows/desktop/api/werapi/nf-werapi-werreportcreate">WerReportCreate</a> function.</param>
+            <param name="dwparamID"></param>
+            <param name="pwzName">A pointer to a Unicode string that contains the name of the parameter. If this parameter is <b>NULL</b>, the default name is P<i>x</i>, where <i>x</i> matches the integer portion of the value specified in <i>dwparamID</i>.</param>
+            <param name="pwzValue">The parameter value.</param>
+            <returns>
+            <para>This function returns <b>S_OK</b> on success or an error code on failure, including the following error code. </para>
+            <para>This doc was truncated.</para>
+            </returns>
+            <remarks>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//werapi/nf-werapi-werreportsetparameter">Learn more about this API from docs.microsoft.com</see>.</para>
+            </remarks>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.WerReportAddFile(System.IntPtr,System.String,Windows.Win32.System.ErrorReporting.WER_FILE_TYPE,Windows.Win32.System.ErrorReporting.WER_FILE)">
+            <inheritdoc cref="M:Windows.Win32.PInvoke.WerReportAddFile(System.IntPtr,Windows.Win32.Foundation.PCWSTR,Windows.Win32.System.ErrorReporting.WER_FILE_TYPE,Windows.Win32.System.ErrorReporting.WER_FILE)"/>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.WerReportAddFile(System.IntPtr,Windows.Win32.Foundation.PCWSTR,Windows.Win32.System.ErrorReporting.WER_FILE_TYPE,Windows.Win32.System.ErrorReporting.WER_FILE)">
+            <summary>Adds a file to the specified report.</summary>
+            <param name="hReportHandle">A handle to the report. This handle is returned by the <a href="https://docs.microsoft.com/windows/desktop/api/werapi/nf-werapi-werreportcreate">WerReportCreate</a> function.</param>
+            <param name="pwzPath">A pointer to a Unicode string that contains the full path to the file to be added. This path can use environment variables. The maximum length of this path is MAX_PATH characters.</param>
+            <param name="repFileType"></param>
+            <param name="dwFileFlags"></param>
+            <returns>
+            <para>This function returns <b>S_OK</b> on success or an error code on failure, including the following error code. </para>
+            <para>This doc was truncated.</para>
+            </returns>
+            <remarks>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//werapi/nf-werapi-werreportaddfile">Learn more about this API from docs.microsoft.com</see>.</para>
+            </remarks>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.WerReportSubmit(System.IntPtr,Windows.Win32.System.ErrorReporting.WER_CONSENT,Windows.Win32.System.ErrorReporting.WER_SUBMIT_FLAGS,Windows.Win32.System.ErrorReporting.WER_SUBMIT_RESULT*)">
+            <summary>Submits the specified report.</summary>
+            <param name="hReportHandle">A handle to the report. This handle is returned by the <a href="https://docs.microsoft.com/windows/desktop/api/werapi/nf-werapi-werreportcreate">WerReportCreate</a> function.</param>
+            <param name="consent"></param>
+            <param name="dwFlags"></param>
+            <param name="pSubmitResult"></param>
+            <returns>This function returns <b>S_OK</b> on success or an error code on failure.</returns>
+            <remarks>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//werapi/nf-werapi-werreportsubmit">Learn more about this API from docs.microsoft.com</see>.</para>
+            </remarks>
+        </member>
+        <member name="M:Windows.Win32.PInvoke.WerReportCloseHandle(System.IntPtr)">
+            <summary>Closes the specified report.</summary>
+            <param name="hReportHandle">A handle to the report. This handle is returned by the <a href="https://docs.microsoft.com/windows/desktop/api/werapi/nf-werapi-werreportcreate">WerReportCreate</a> function.</param>
+            <returns>This function returns <b>S_OK</b> on success or an error code on failure.</returns>
+            <remarks>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//werapi/nf-werapi-werreportclosehandle">Learn more about this API from docs.microsoft.com</see>.</para>
+            </remarks>
+        </member>
+        <member name="T:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION">
+            <summary>Contains information used by the WerReportCreate function.</summary>
+            <remarks>
+            <para><see href="https://docs.microsoft.com/windows/win32/api//werapi/ns-werapi-wer_report_information">Learn more about this API from docs.microsoft.com</see>.</para>
+            </remarks>
+        </member>
+        <member name="F:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.dwSize">
+            <summary>The size of this structure, in bytes.</summary>
+        </member>
+        <member name="F:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.hProcess">
+            <summary>A handle to the process for which the report is being generated. If this member is <b>NULL</b>, this is the calling process.</summary>
+        </member>
+        <member name="F:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.wzConsentKey">
+            <summary>The name used to look up consent settings. If this member is empty, the default is the name specified by the <i>pwzEventType</i> parameter of <a href="https://docs.microsoft.com/windows/desktop/api/werapi/nf-werapi-werreportcreate">WerReportCreate</a>.</summary>
+        </member>
+        <member name="F:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.wzFriendlyEventName">
+            <summary>The display name. If this member is empty, the default is the name specified by <i>pwzEventType</i> parameter of <a href="https://docs.microsoft.com/windows/desktop/api/werapi/nf-werapi-werreportcreate">WerReportCreate</a>.</summary>
+        </member>
+        <member name="F:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.wzApplicationName">
+            <summary>The name of the application. If this parameter is empty, the default is the base name of the image file.</summary>
+        </member>
+        <member name="F:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.wzApplicationPath">
+            <summary>The full path to the application.</summary>
+        </member>
+        <member name="F:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.wzDescription">
+            <summary>A description of the problem. This description is displayed in <b>Problem Reports and Solutions</b> on Windows Vista or the problem reports pane of the <b>Action Center</b> on Windows 7.</summary>
+        </member>
+        <member name="F:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.hwndParent">
+            <summary>A handle to the parent window.</summary>
+        </member>
+        <member name="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_64.Length">
+            <summary>Always <c>64</c>.</summary>
+        </member>
+        <member name="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_64.Item(System.Int32)">
+            <summary>
+            Gets a ref to an individual element of the inline array.
+            ⚠ Important ⚠: When this struct is on the stack, do not let the returned reference outlive the stack frame that defines it.
+            </summary>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_64.AsSpan">
+            <summary>
+            Gets this inline array as a span.
+            </summary>
+            <remarks>
+            ⚠ Important ⚠: When this struct is on the stack, do not let the returned span outlive the stack frame that defines it.
+            </remarks>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_64.ToString(System.Int32)">
+            <summary>
+            Copies the fixed array to a new string up to the specified length regardless of whether there are null terminating characters.
+            </summary>
+            <exception cref="T:System.ArgumentOutOfRangeException">
+            Thrown when <paramref name="length"/> is less than <c>0</c> or greater than <see cref="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_64.Length"/>.
+            </exception>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_64.ToString">
+            <summary>
+            Copies the fixed array to a new string, stopping before the first null terminator character or at the end of the fixed array (whichever is shorter).
+            </summary>
+        </member>
+        <member name="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_128.Length">
+            <summary>Always <c>128</c>.</summary>
+        </member>
+        <member name="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_128.Item(System.Int32)">
+            <summary>
+            Gets a ref to an individual element of the inline array.
+            ⚠ Important ⚠: When this struct is on the stack, do not let the returned reference outlive the stack frame that defines it.
+            </summary>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_128.AsSpan">
+            <summary>
+            Gets this inline array as a span.
+            </summary>
+            <remarks>
+            ⚠ Important ⚠: When this struct is on the stack, do not let the returned span outlive the stack frame that defines it.
+            </remarks>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_128.ToString(System.Int32)">
+            <summary>
+            Copies the fixed array to a new string up to the specified length regardless of whether there are null terminating characters.
+            </summary>
+            <exception cref="T:System.ArgumentOutOfRangeException">
+            Thrown when <paramref name="length"/> is less than <c>0</c> or greater than <see cref="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_128.Length"/>.
+            </exception>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_128.ToString">
+            <summary>
+            Copies the fixed array to a new string, stopping before the first null terminator character or at the end of the fixed array (whichever is shorter).
+            </summary>
+        </member>
+        <member name="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_260.Length">
+            <summary>Always <c>260</c>.</summary>
+        </member>
+        <member name="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_260.Item(System.Int32)">
+            <summary>
+            Gets a ref to an individual element of the inline array.
+            ⚠ Important ⚠: When this struct is on the stack, do not let the returned reference outlive the stack frame that defines it.
+            </summary>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_260.AsSpan">
+            <summary>
+            Gets this inline array as a span.
+            </summary>
+            <remarks>
+            ⚠ Important ⚠: When this struct is on the stack, do not let the returned span outlive the stack frame that defines it.
+            </remarks>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_260.ToString(System.Int32)">
+            <summary>
+            Copies the fixed array to a new string up to the specified length regardless of whether there are null terminating characters.
+            </summary>
+            <exception cref="T:System.ArgumentOutOfRangeException">
+            Thrown when <paramref name="length"/> is less than <c>0</c> or greater than <see cref="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_260.Length"/>.
+            </exception>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_260.ToString">
+            <summary>
+            Copies the fixed array to a new string, stopping before the first null terminator character or at the end of the fixed array (whichever is shorter).
+            </summary>
+        </member>
+        <member name="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_512.Length">
+            <summary>Always <c>512</c>.</summary>
+        </member>
+        <member name="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_512.Item(System.Int32)">
+            <summary>
+            Gets a ref to an individual element of the inline array.
+            ⚠ Important ⚠: When this struct is on the stack, do not let the returned reference outlive the stack frame that defines it.
+            </summary>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_512.AsSpan">
+            <summary>
+            Gets this inline array as a span.
+            </summary>
+            <remarks>
+            ⚠ Important ⚠: When this struct is on the stack, do not let the returned span outlive the stack frame that defines it.
+            </remarks>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_512.ToString(System.Int32)">
+            <summary>
+            Copies the fixed array to a new string up to the specified length regardless of whether there are null terminating characters.
+            </summary>
+            <exception cref="T:System.ArgumentOutOfRangeException">
+            Thrown when <paramref name="length"/> is less than <c>0</c> or greater than <see cref="P:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_512.Length"/>.
+            </exception>
+        </member>
+        <member name="M:Windows.Win32.System.ErrorReporting.WER_REPORT_INFORMATION.__char_512.ToString">
+            <summary>
+            Copies the fixed array to a new string, stopping before the first null terminator character or at the end of the fixed array (whichever is shorter).
+            </summary>
+        </member>
+    </members>
+</doc>

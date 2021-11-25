@@ -1,0 +1,4 @@
+system.img filter=lfs diff=lfs merge=lfs -text
+vendor.img filter=lfs diff=lfs merge=lfs -text
+system_ext.img filter=lfs diff=lfs merge=lfs -text
+product.img filter=lfs diff=lfs merge=lfs -text

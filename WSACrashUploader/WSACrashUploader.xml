@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>WSACrashUploader</name>
+    </assembly>
+    <members>
+        <member name="T:WSACrashUploader.Program">
+            <summary>
+            Class that contains the main for WSACrashUploader.
+            </summary>
+        </member>
+        <member name="M:WSACrashUploader.Program.Main(System.String[])">
+            <summary>
+            Main method for WSACrashUploader.
+            </summary>
+            <param name="args">Arguments to WSACrashUploader.</param>
+        </member>
+        <member name="M:WSACrashUploader.Program.GetTelemetryEnabled">
+            <summary>
+            Gets value indicating whether or not telemetry is enabled.
+            </summary>
+            <returns>The boolean value stored in WSA's LocalSettings if present, otherwise false.</returns>
+        </member>
+    </members>
+</doc>
